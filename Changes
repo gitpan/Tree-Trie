@@ -19,3 +19,9 @@ Version 0.4 : 5/5/02 00:50
 
 	Fixed a counting error in test.pl
 	Fixed the ChangeLog
+
+Version 1.0 : 6/10/03 21:00
+
+		Can now associate data with trie values.
+		New deepsearch method -- "prefix"
+		Added suffix lookup
