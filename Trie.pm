@@ -8,18 +8,51 @@ require 5;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = "0.1";
+$VERSION = "0.2";
+
+my($PLEEP) = 3.14159265359;
 
 ##   Here there be methods
 
-# The constructor method.  It's very simple, and I refuse to explain.
+# The constructor method.  It's very simple.
 sub new {
-  my $proto = shift;
-  my $class = ref($proto) || $proto;
-  my $self = {};
-  $self->{_MAINHASHREF} = {};
+  my($proto) = shift;
+  my($options) = shift;
+  my($class) = ref($proto) || $proto;
+  my($self) = {};
   bless($self, $class);
+  $self->{_MAINHASHREF} = {};
+  $self->{_END}  = {};
+  $self->{_DEEPSEARCH} = 1;
+  unless ( defined($options) && (ref($options) eq "HASH") ) {
+    $options = {};
+  }
+  $self->deepsearch($options->{'deepsearch'});
   return($self);
+}
+
+# Sets the value of the deepsearch parameter.  Can be passed either words
+# describing the parameter, or their numerical equivalents.  Legal values
+# are:
+# boolean => 0
+# choose => 1
+# count => 2
+# See the POD for the 'lookup' method for details on this option.
+sub deepsearch {
+  my($self) = shift;
+  my($option) = shift;
+  if(defined($option)) {
+    if ($option eq '0' || $option eq 'boolean') {
+      $self->{_DEEPSEARCH} = 0;
+    }
+    elsif ($option eq '1' || $option eq 'choose') {
+      $self->{_DEEPSEARCH} = 1;
+    }
+    elsif ($option eq '2' || $option eq 'count') {
+      $self->{_DEEPSEARCH} = 2;
+    }
+  }
+  return $self->{_DEEPSEARCH};
 }
 
 # The add() method takes a list of words as arguments and attempts to add
@@ -45,12 +78,21 @@ sub add {
       # If that letter already had a branch from where we are, then we just
       # walk down that branch.
       if (exists $ref->{$letter}) {
-        $ref = \%{ $ref->{$letter} };
+        $ref = $ref->{$letter};
       }
       else {
-        # Once we find an letter for which there is no branch then we 
-        # call the internal populate function to fill it in.
-        $ref->{$letter} = _populate(@letters);
+        if (scalar @letters) {
+          # Once we find an letter for which there is no branch then we 
+          # call the internal populate function to fill it in.
+          $ref->{$letter} = $self->_populate(@letters);
+        }
+        else {
+          # We have to specially handle the single-letter case here.
+          # Much thanks to Martin Julian DeMello.
+          $ref->{$letter} = {};
+          $ref = $ref->{$letter};
+          $ref->{$self->{_END}} = undef;
+        }
         # Update the applicable counter...
         if (wantarray) {
           push(@retarray,$word);
@@ -63,9 +105,10 @@ sub add {
       }
     }
     # If we ran out of letters without finding an unpopulted branch and there
-    # is not already a leaf node there, we add the leaf node.
-    unless ((scalar @letters) || (exists $ref->{'00'})) {
-      $ref->{'00'} = undef;
+    # is not already a leaf node there, we add the leaf node which is indicated 
+    # by a reference to a special hash we made.
+    unless ((scalar @letters) || (exists $ref->{$self->{_END}})) {
+      $ref->{$self->{_END}} = undef;
       # And again, update the correct counter.
       if (wantarray) {
         push(@retarray,$word);
@@ -80,10 +123,11 @@ sub add {
 }
 
 # The internal subroutine _populate() is just a convenient way to build a hash
-# that looks like (for the word apple) {a}->{p}->{p}->{l}->{e}->{00}.  Returns
-# a ref to the new hash, allowing us to include this branch structure in the
-# main trie.
+# that looks like (for the word apple):
+# {a}->{p}->{p}->{l}->{e}->{$self->{_END}}.  Returns a ref to the new hash, 
+# allowing us to include this branch structure in the main trie.
 sub _populate {
+  my($self) = shift;
   my(@letters) = @_;
 
   my(%temphash) = ();
@@ -91,20 +135,19 @@ sub _populate {
   my($letter) = shift @letters;
   # Ooh, recursion.  Yay. :)
   unless (scalar @letters) {
-    $temphash{$letter}{'00'} = undef;
+    $temphash{$letter}{$self->{_END}} = undef;
   }
   else {
-    $temphash{$letter} = _populate(@letters);
+    $temphash{$letter} = $self->_populate(@letters);
   }
   return \%temphash;
 }
 
 # The lookup() method searches for words (or beginnings of words) in the trie.
-# It takes a single word as an argument and, in scalar context, either returns
-# the word itself (if it exists), or a word beginning with the word being
-# searched for, or undef if no words begin with the word being searched for.
-# In list context, returns a list of all the words in the trie which begin
-# with the given word.
+# It takes a single word as an argument and, in list context, returns a list
+# of all the words in the trie which begin with the given word.  In scalar
+# context, the return value depends on the value of the deepsearch parameter.
+# See the POD on this method for more details.
 sub lookup {
   my($self) = shift;
   my($word) = shift;
@@ -116,16 +159,24 @@ sub lookup {
   my(@retarray) = ();
 
   my(@letters) = split('',$word);
-  # Like everything else, we step across each letter
+  # Like everything else, we step across each letter.
   while(defined($letter = shift(@letters))) {
     # If, at any point, we find that we've run out of tree before we've run out
     # of word, then there is nothing in the trie that begins with the input 
     # word, so we return an error status.
     unless (exists $ref->{$letter}) {
-      return;
+      if (wantarray) {
+        return ();
+      }
+      elsif ($self->{_DEEPSEARCH} == 2) {
+        return 0;
+      }
+      else {
+        return undef;
+      }
     }
     # If the letter is there, we just walk down the trie.
-    $ref = \%{ $ref->{$letter} };
+    $ref = $ref->{$letter};
   }
   # Once we've walked all the way down the tree to the end of the word we were
   # given, there are a few things that can be done, depending on the context
@@ -133,47 +184,77 @@ sub lookup {
   if (wantarray) {
     # If they want an array, then we use the walktree subroutine to collect all
     # of the words beneath our current location in the trie, and return them.
-    @retarray = _walktree($word,$ref);
+    @retarray = $self->_walktree($word,$ref);
     return @retarray;
   }
   else {
-    # If they want a scalar, then I continue to walk down the trie, collecting
-    # letters, until we find a leaf node, at which point we stop.  Not that
-    # this works properly if the exact word is in the trie.  Yay.
-    until (exists $ref->{'00'}) {
-      $nextletter = each(%{ $ref });
-      # I need to call this to clear the each() call.
-      keys(%{ $ref });
-      $stub .= $nextletter;
-      $ref = \%{ $ref->{$nextletter} };
+    if ($self->{_DEEPSEARCH} == 0) {
+      # Here, the user only wants to know if any words in the trie begin 
+      # with their word, so that's what we give them.
+      return 1;
     }
-    return $word . $stub;
+    elsif ($self->{_DEEPSEARCH} == 1) {
+      # If they want this, then I continue to walk down the trie, collecting
+      # letters, until we find a leaf node, at which point we stop.  Note that
+      # this works properly if the exact word is in the trie.  Yay.
+      until (exists $ref->{$self->{_END}}) {
+        $nextletter = each(%{ $ref });
+        # I need to call this to clear the each() call.  Wish I didn't...
+        keys(%{ $ref });
+        $stub .= $nextletter;
+        $ref = $ref->{$nextletter};
+      }
+      return $word . $stub;
+    }
+    else {
+      # Here, the user simply wants a count of words in the trie that begin
+      # with their word, so we get that by calling our walktree method in 
+      # scalar context.
+      return scalar $self->_walktree($word, $ref);
+    }
   }
 }
 
-# The walktree() sub takes a word beginning and a hashref (hopefully to a trie)
+# The _walktree() sub takes a word beginning and a hashref (hopefully to a trie)
 # and walks down the trie, gathering all of the word endings and retuning them
 # appended to the word beginning.
 sub _walktree {
+  my($self) = shift;
   my($word,$ref) = @_[0,1];
 
   my($key) = "";
   my(@retarray) = ();
+  my($ret) = 0;
 
-  # This is kind of tricky.  The value of the leaf nodes (which are hash keys)
-  # is undef, so if $ref isn't defined then we're at a leaf and hit the base
-  # case of the recursion.
-  unless (defined($ref)) {
-    # We've already appended the '00' in the leaf node, so we have to get rid
-    # of it.  Oops.
-    chop $word;
-    chop $word;
-    return $word;
-  }
+  # For some reason, I used to think this was complicated and had a lot of 
+  # stupid, useless code here.  It's a lot simpler now.  If the key we find 
+  # is our magic reference, then we just give back the word.  Otherwise, we 
+  # walk down the new subtree we've discovered.
   foreach $key (keys %{ $ref }) {
-    push(@retarray,_walktree($word . $key,$ref->{$key}));
+    if ($key eq $self->{_END}) {
+      if (wantarray) {
+        push(@retarray,$word);
+      }
+      else {
+        $ret++;
+      }
+    }
+    else {
+      # Look, recursion!
+      if (wantarray) {
+        push(@retarray,$self->_walktree($word . $key, $ref->{$key}));
+      }
+      else {
+        $ret += scalar $self->_walktree($word . $key, $ref->{$key});
+      }
+    }
   }
-  return @retarray;
+  if (wantarray) {
+    return @retarray;
+  }
+  else {
+    return $ret;
+  }
 }
 
 # The remove() method takes a list of words and, surprisingly, removes them
@@ -206,7 +287,7 @@ sub remove {
     # 'last deleteable node'.  It contains the ref of the hash and the key to
     # be deleted.  It does not seem possible to store a value passable to
     # the 'delete' builtin in a scalar, so we're forced to do this.
-    push(@letters,'00');
+    push(@letters,$self->{_END});
     $ref = $self->{_MAINHASHREF};
     @ldn = ();
     
@@ -221,7 +302,7 @@ sub remove {
       # We break out if we're at the end, or if we're run out of trie before
       # finding the end of the word -- that is, if the word isn't in the
       # trie.
-      last if ($letter eq '00');
+      last if ($letter eq $self->{_END});
       last unless exists($ref->{$letter});
       if (scalar keys(%{ $ref->{$letter} }) == 1 && exists $ref->{$letter}{$letters[0]}) {
         unless (scalar @ldn) {
@@ -231,17 +312,17 @@ sub remove {
       else {
         @ldn = ();
       }
-      $ref = \%{ $ref->{$letter} };
+      $ref = $ref->{$letter};
     }
     # If we broke out and there were still letters left in @letters, then the
     # word must not be in the trie.  Furthermore, if we got all the way to
     # the end, but there's no leaf node, the word must not be in the trie.
     next if (scalar @letters);
-    next unless (exists($ref->{'00'}));
+    next unless (exists($ref->{$self->{_END}}));
     # If @ldn is empty, then the only deleteable node is the leaf node, so
     # we set this up.
     if (scalar @ldn == 0) {
-      @ldn = ($ref,'00');
+      @ldn = ($ref,$self->{_END});
     }
     # If there's only one entry in @ldn, then it's the ref of the top of our
     # Trie.  If that's marked as deleteable, then we can just nuke the entire
@@ -292,35 +373,40 @@ Tree::Trie - An implementation of the Trie data structure in Perl
  my(@all) = $trie->lookup("");
  my(@ms)  = $trie->lookup("m");
  $" = "--";
- print "Entire trie contains: @all\nMuses beginning with 'm': @ms\n";
+ print "All muses: @all\nMuses beginning with 'm': @ms\n";
  my(@deleted) = $trie->remove(qw[calliope thalia doc]);
- print "Deleted @deleted\n";
+ print "Deleted muses: @deleted\n";
  
 
 =head1 DESCRIPTION
 
 This module implements a trie data structure.  The term "trie" comes from the
 word reB<trie>val, but is generally pronounced like "try".  A trie is a tree
-structure, the nodes of which represent letters in a word.  For example, the
-final lookup for the word 'bob' would look something like 
-C<$ref-E<gt>{'b'}{'o'}{'b'}{'00'}> (the '00' being the end marker).  Only nodes
-which would represent words in the trie exist, making the structure slightly
-smaller than a hash of the same data set.
+structure (or directed acyclic graph), the nodes of which represent letters 
+in a word.  For example, the final lookup for the word 'bob' would look 
+something like C<$ref-E<gt>{'b'}{'o'}{'b'}{HASH(0x80c6bbc)}> (the HASH being an
+end marker).  Only nodes which would represent words in the trie exist, making
+the structure slightly smaller than a hash of the same data set.
 
 The advantages of the trie over other data storage methods is that lookup
 times are O(1) WRT the size of the index.  For sparse data sets, it is probably
 not as efficient as performing a binary search on a sorted list, and for small
 files, it has a lot of overhead.  The main advantage (at least from my 
 perspective) is that it provides a relatively cheap method for finding a list
-of words in your set which begin with a certain string.
+of words in a large, dense data set which B<begin> with a certain string.
 
 =head1 METHODS
 
 =over 4
 
-=item new
 
-This is the constructor method for the class.  It takes no arguments.
+=item new([\%options])
+
+This is the constructor method for the class.  You may optionally pass it
+a hash reference with a set of option => value pairs.  Currently, the only
+option available is 'deepsearch' and its valid values are 'boolean', 'choose'
+or 'count'.  The documentation on the 'lookup' method describes the effects
+of these different values.
 
 
 =item add(word0 [, word1...wordN])
@@ -341,13 +427,28 @@ reason a word would fail to be removed is if it is not already in the trie.
 
 =item lookup(word0)
 
-This method performs lookups on the trie.  In scalar context, returns the first
-word found in the trie which begins with word0.  If word0 exists exactly in
-the trie, returns word0.  Returns undef if no words beginning with word0 are
-in the trie.  In list context, returns a complete list of words in the trie
-which begin with word0.
+This method performs lookups on the trie.  In list context, it returns a
+complete list of words in the trie which begin with word0.
+In scalar context, the value returned depends on the setting of the 'deepsearch'
+option.  You can set this option while creating your Trie object, or by using
+the deepsearch method.  If deepsearch is set to 'boolean', it will return
+a true value if any word in the trie begins with word0.  This setting is the
+fastest.  If deepsearch is 'choose', it will return one word in the trie that
+begins with word0, or undef if nothing is found.  If word0 exists in the trie
+exactly, it will be returned.  Finally, if deepsearch is set to 'count', it
+will return a count of the words in the trie that begin with word0.  This
+operation requires walking the entire tree, so can possibly be significantly
+slower than the other two options.  For reasons of backwards compatibilty,
+'choose' is the default value of this option.
 
 To get a list of all words in the trie, use C<lookup("")> in list context.
+
+=item deepsearch([option])
+
+If option os specified, sets the deepsearch parameter.  Option may be one of:
+'boolean', 'choose', 'count'.  Please see the documentation for the lookup
+method for the details of what these options mean.  Returns the current value
+of the deepsearch parameter.
 
 =back
 
@@ -355,15 +456,10 @@ To get a list of all words in the trie, use C<lookup("")> in list context.
 
 =over 4
 
-=item * 
-
-I plan on making a "DeepSearch" (or similarly named) method, allowing the 
-bahviour of the lookup method in scalar context to be configured -- it will be
-able to return undef if word0 does not exist exactly in the trie.
-
 =item *
 
-The ability to associate data with each word in a trie will be added.
+The ability to associate data with each word in a trie will be added, 
+eventually.
 
 =item *
 
@@ -371,16 +467,18 @@ There are a few methods of compression that allow you same some amount of space
 in the trie.  I have to figure out which ones are worth implemeting.  I may
 end up making the different compression methods configurable.
 
+I have now made one of them the default.
+
 =item *
 
-The ability to have Tree::Trie store its internal hash as a TIE object of some
+The ability to have Tree::Trie store its internal hash as a TIEd object of some
 sort.
 
 =back
 
 =head1 AUTHOR
 
-Copyright 1999 Avi Finkel <F<avi@lycos.com>>
+Copyright 2000 Avi Finkel <F<avi@finkel.org>>
 
 This package is free software and is provided "as is" without express
 or implied warranty.  It may be used, redistributed and/or modified
