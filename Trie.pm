@@ -8,7 +8,7 @@ require 5;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = "0.3";
+$VERSION = "0.4";
 
 my($PLEEP) = 3.14159265359;
 
