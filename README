@@ -9,7 +9,8 @@ PREREQUISITES
 This suite requires Perl 5; I've only used it under Perl 5.004, so for
 anything lower, you're on your own.
 
-Tree::Trie doesn't use any nonstandard modules.
+Tree::Trie doesn't use any nonstandard modules.  In fact, it doesn't use
+any modules at all.
 
 INSTALLATION
 
@@ -45,6 +46,6 @@ Comprehensive Perl Archive Network (CPAN).  Visit
 
 COPYRIGHT
 
-Copyright 1999, Avi Finkel <avi@finkel.org>, all rights
+Copyright 2000, Avi Finkel <avi@finkel.org>, all rights
 reserved.  This program is free software; you can redistribute it and/or 
 modify it under the same terms as Perl itself.

@@ -8,7 +8,7 @@ require 5;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = "0.2";
+$VERSION = "0.3";
 
 my($PLEEP) = 3.14159265359;
 
@@ -70,7 +70,14 @@ sub add {
 
   # Process each word...
   foreach $word (@words) {
-    @letters = split('',$word);
+    # New feature -- we don't NEED to split a string into letters any more;
+    # Any array of tokens will do.
+    if (ref($word) eq 'ARRAY') {
+      @letters = @{$word};
+    }
+    else {
+      @letters = split('',$word);
+    }
     # Start at the top of the Trie...
     $ref = $self->{_MAINHASHREF};
     # Pull off letters one at a time.
@@ -155,10 +162,18 @@ sub lookup {
   my($ref) = $self->{_MAINHASHREF};
 
   my($letter) = "";
-  my($stub,$nextletter) = ("","");
-  my(@retarray) = ();
+  my($nextletter) = ("");
+  my(@letters) = ();
+	my(@retarray) = ();
+	my($wantref) = 0;
 
-  my(@letters) = split('',$word);
+  if (ref($word) eq 'ARRAY') {
+    @letters = @{$word};
+		$wantref = 1;
+  }
+  else {
+    @letters = split('',$word);
+  }
   # Like everything else, we step across each letter.
   while(defined($letter = shift(@letters))) {
     # If, at any point, we find that we've run out of tree before we've run out
@@ -194,17 +209,23 @@ sub lookup {
       return 1;
     }
     elsif ($self->{_DEEPSEARCH} == 1) {
-      # If they want this, then I continue to walk down the trie, collecting
+      # If they want this, then we continue to walk down the trie, collecting
       # letters, until we find a leaf node, at which point we stop.  Note that
       # this works properly if the exact word is in the trie.  Yay.
+			my($stub) = $wantref ? [] : "";
       until (exists $ref->{$self->{_END}}) {
         $nextletter = each(%{ $ref });
         # I need to call this to clear the each() call.  Wish I didn't...
         keys(%{ $ref });
-        $stub .= $nextletter;
+				if ($wantref) {
+					push(@{$stub}, $nextletter);
+				}
+				else {
+					$stub .= $nextletter;
+				}
         $ref = $ref->{$nextletter};
       }
-      return $word . $stub;
+			return $wantref ? [@{$word}, @{$stub}] : $word . $stub;
     }
     else {
       # Here, the user simply wants a count of words in the trie that begin
@@ -240,12 +261,13 @@ sub _walktree {
       }
     }
     else {
+			my $nextval = ref($word) eq 'ARRAY' ? [@{$word}, $key] : $word . $key;
       # Look, recursion!
       if (wantarray) {
-        push(@retarray,$self->_walktree($word . $key, $ref->{$key}));
+        push(@retarray,$self->_walktree($nextval, $ref->{$key}));
       }
       else {
-        $ret += scalar $self->_walktree($word . $key, $ref->{$key});
+        $ret += scalar $self->_walktree($nextval, $ref->{$key});
       }
     }
   }
@@ -281,7 +303,12 @@ sub remove {
   my($retnum) = 0;
 
   foreach $word (@words) {
-    @letters = split('',$word);
+    if (ref($word) eq 'ARRAY') {
+      @letters = @{$word};
+    }
+    else {
+      @letters = split('',$word);
+    }
     # For each word, we need to put the leaf node entry at the end of the list
     # of letters.  We then reset the starting ref, and @ldn, which stands for
     # 'last deleteable node'.  It contains the ref of the hash and the key to
@@ -395,6 +422,15 @@ files, it has a lot of overhead.  The main advantage (at least from my
 perspective) is that it provides a relatively cheap method for finding a list
 of words in a large, dense data set which B<begin> with a certain string.
 
+As of version 0.3 of this module, the term "word" in this documentation can
+refer to one of two things: either a refeence to an array of strings, or
+a scalar which is not an array ref.  In the case of the former, each element
+of the array is treated as a "letter" of the "word".  In the case of the
+latter, the scalar is evaluated in string context and it is split into its
+component letters.  Return values of methods match the values of what is
+passed in -- that is, if you call lookup() with an array reference,
+the return value will be an array reference (if appropriate).
+
 =head1 METHODS
 
 =over 4
@@ -458,7 +494,7 @@ of the deepsearch parameter.
 
 =item *
 
-The ability to associate data with each word in a trie will be added, 
+The ability to associate data with each word in a trie may be added, 
 eventually.
 
 =item *
@@ -467,7 +503,8 @@ There are a few methods of compression that allow you same some amount of space
 in the trie.  I have to figure out which ones are worth implemeting.  I may
 end up making the different compression methods configurable.
 
-I have now made one of them the default.
+I have now made one of them the default.  It's the least effective one, of
+course.
 
 =item *
 
@@ -478,7 +515,7 @@ sort.
 
 =head1 AUTHOR
 
-Copyright 2000 Avi Finkel <F<avi@finkel.org>>
+Copyright 2002 Avi Finkel <F<avi@finkel.org>>
 
 This package is free software and is provided "as is" without express
 or implied warranty.  It may be used, redistributed and/or modified

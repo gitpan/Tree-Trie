@@ -4,3 +4,14 @@ Avi Finkel <avi@finkel.org>
 Version 0.1 : 3/29/99 15:56
 
    No changes -- initial release
+
+Version 0.2 : 11/15/00 03:44
+
+   Major bugfix, relating to single-element branches
+   Added deepsearch parameter, allowing control of resurns from
+     lookup() method in scalar context
+
+Version 0.3 : ??/??/0? ??:??
+
+   Actually added the 0.2 changes.  Oops. :)
+OTHER SHIT
