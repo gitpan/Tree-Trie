@@ -25,3 +25,11 @@ Version 1.0 : 6/10/03 21:00
 		Can now associate data with trie values.
 		New deepsearch method -- "prefix"
 		Added suffix lookup
+
+Version 1.1 : 1/23/05 01:18
+
+		Cleaned up some slow recursive code.
+		Got rid of all that silliness with the _JOINER data member
+		Tries are now serializable -- this required quite a bit of
+		  juggling with the end marker stuff.
+		Data is now stored in a more reasonable way.
