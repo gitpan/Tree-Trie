@@ -2,6 +2,8 @@ Changes
 Makefile.PL
 README
 Trie.pm
-test.pl
+t/00_basic.t
+t/01_pod.t
+t/02_pod_cover.t
 MANIFEST
 META.yml                                 Module meta-data (added by MakeMaker)

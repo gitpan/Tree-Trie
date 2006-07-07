@@ -17,8 +17,8 @@ Version 0.3 : 5/5/02 00:47
 
 Version 0.4 : 5/5/02 00:50
 
-	Fixed a counting error in test.pl
-	Fixed the ChangeLog
+		Fixed a counting error in test.pl
+		Fixed the ChangeLog
 
 Version 1.0 : 6/10/03 21:00
 
@@ -33,3 +33,7 @@ Version 1.1 : 1/23/05 01:18
 		Tries are now serializable -- this required quite a bit of
 		  juggling with the end marker stuff.
 		Data is now stored in a more reasonable way.
+
+Version 1.2 : 7/7/06 03:45
+
+		Cleaned up the tests

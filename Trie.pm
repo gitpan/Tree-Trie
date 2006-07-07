@@ -8,7 +8,7 @@ require 5;
 use strict;
 use warnings;
 
-our $VERSION = "1.1";
+our $VERSION = "1.2";
 
 # A handful of helpful constants
 use constant DEFAULT_END_MARKER => '';
