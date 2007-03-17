@@ -8,7 +8,7 @@ require 5;
 use strict;
 use warnings;
 
-our $VERSION = "1.2";
+our $VERSION = "1.3";
 
 # A handful of helpful constants
 use constant DEFAULT_END_MARKER => '';
@@ -17,6 +17,7 @@ use constant BOOLEAN => 0;
 use constant CHOOSE  => 1;
 use constant COUNT   => 2;
 use constant PREFIX  => 3;
+use constant EXACT   => 4;
 
 ##   Public methods begin here
 
@@ -95,6 +96,7 @@ sub freeze_end_marker {
 # choose => 1
 # count => 2
 # prefix => 3
+# exact => 4
 # See the POD for the 'lookup' method for details on this option.
 sub deepsearch {
 	my($self) = shift;
@@ -111,6 +113,9 @@ sub deepsearch {
 		}
 		elsif ($option eq PREFIX || $option eq 'prefix') {
 			$self->{_DEEPSEARCH} = PREFIX;
+		}
+		elsif ($option eq EXACT || $option eq 'exact') {
+			$self->{_DEEPSEARCH} = EXACT;
 		}
 	}
 	return $self->{_DEEPSEARCH};
@@ -539,6 +544,23 @@ sub _lookup_internal {
 			# with their word, so that's what we give them.
 			return 1;
 		}
+		elsif ($self->{_DEEPSEARCH} == EXACT) {
+			# In this case, the user wants us to return something only if the
+			# exact word exists in the trie, and undef otherwise.
+			# This option only really makes sense with when looking up data,
+			# as otherwise it's essentially the same as BOOLEAN, above, but it
+			# doesn't hurt to allow it to work with normal lookup, either.
+			# I'd initially left this out because I didn't see a use for it, but
+			# thanks to Otmal Lendl for pointing out to me a situation in which
+			# it would be helpful to have.
+			if (exists $ref->{$self->{_END}}) {
+				if ($args{data}) {
+					return $ref->{$self->{_END}};
+				}
+				return $word;
+			}
+			return undef;
+		}
 		elsif ($self->{_DEEPSEARCH} == CHOOSE) {
 			# If they want this, then we continue to walk down the trie, collecting
 			# letters, until we find a leaf node, at which point we stop.  Note that
@@ -736,7 +758,7 @@ sub _gen_new_marker {
 			$newlen = $len + 1;
 		}
 	}
-	# Now we just general end markers until we find one that isn't in use.
+	# Now we just generate end markers until we find one that isn't in use.
 	my $newend = each %used;
 	while (exists($used{$newend})) {
 		$newend = '';
@@ -864,14 +886,18 @@ This setting is the fastest.
 choose: Will return one word in the trie that begins with I<word>, or undef if
 nothing is found.  If I<word> exists in the trie exactly, it will be returned.
 
-count: Will return a count of the words in the trie that begin with I<word>.  This
-operation requires walking the entire tree, so can possibly be significantly
-slower than other options.
+count: Will return a count of the words in the trie that begin with I<word>.
+This operation may require walking the entire tree, so it can possibly be
+significantly slower than other options.
 
 prefix: Will return the longest entry in the trie that is a prefix of I<word>.
 For example, if you had a list of file system mount points in your trie, you
 could use this option, pass in the full path of a file, and would be returned
 the name of the mount point on which the file could be found.
+
+exact: If the exact word searched for exists in the trie, will return that
+word (or the data associated therewith), undef otherwise.  This is essentially
+equivalent to a hash lookup, but it does have utility in some cases.
 
 For reasons of backwards compatibility, 'choose' is the default value
 of this option.
@@ -1015,7 +1041,7 @@ Here are some situations in which you might want to use the methods described
 in the previous section.
 
 Let's say your application takes user input data describing travel across
-the united states, and each nod in the trie is a two-letter state abbreviation.
+the united states, and each node in the trie is a two-letter state abbreviation.
 In this case, it would probably be fairly safe to set your end marker to
 something like '00'.  However, since this is user-supplied data, you don't
 want to let some user break your whole system by entering '00', so you should
@@ -1060,7 +1086,7 @@ None at this time.
 
 =head1 AUTHOR
 
-Copyright 2005 Avi Finkel <F<avi@finkel.org>>
+Copyright 2007 Avi Finkel <F<avi@finkel.org>>
 
 This package is free software and is provided "as is" without express
 or implied warranty.  It may be used, redistributed and/or modified

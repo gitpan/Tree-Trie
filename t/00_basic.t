@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..68\n"; }
+BEGIN { $| = 1; print "1..72\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Tree::Trie;
 $loaded = 1;
@@ -155,3 +155,14 @@ $tree->add('foo');
 ok( ($tree->remove('foo') == 1), 67 );
 @test = $tree->lookup('');
 ok( (scalar @test == 0), 68 );
+
+# Testing exact lookup
+$tree = new Tree::Trie;
+$tree->add_data('foo', 'oof');
+$tree->add_data('foot', 'toof');
+$tree->add_data('bar', 'rab');
+$tree->deepsearch('exact');
+ok(!defined($tree->lookup('fo')), 69 );
+ok( 'foo' eq $tree->lookup('foo'), 70 );
+ok(!defined($tree->lookup_data('b')), 71 );
+ok( 'oof' eq $tree->lookup_data('foo'), 72 );
