@@ -41,3 +41,8 @@ Version 1.2 : 7/7/06 03:45
 Version 1.4 : 8/17/07 22:49
 
 		Changing Makefile.PL
+
+Version 1.5 : 8/19/07 15:43
+
+		Updating makefile dependency information; looks like older versions of
+		Pod::Coverage had some bugs that some testers are running into.
