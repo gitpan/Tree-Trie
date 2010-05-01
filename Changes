@@ -46,3 +46,7 @@ Version 1.5 : 8/19/07 15:43
 
 		Updating makefile dependency information; looks like older versions of
 		Pod::Coverage had some bugs that some testers are running into.
+
+Version 1.6 : 4/30/10 11:13
+
+		Updating Test::Pod::Coverage settings.  Again.
