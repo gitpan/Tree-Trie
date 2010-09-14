@@ -6,7 +6,7 @@ Tree::Trie is an implementation of a Trie data structure in Perl.
 
 PREREQUISITES
 
-This suite requires Perl 5; I've only used it under Perl 5.8.3, so for
+This suite requires Perl 5; I've only used it under Perl 5.10.0, so for
 anything lower, you're on your own.
 
 Tree::Trie doesn't use any nonstandard modules.  In fact, it doesn't use
@@ -46,6 +46,6 @@ Comprehensive Perl Archive Network (CPAN).  Visit
 
 COPYRIGHT
 
-Copyright 2007, Avi Finkel <avi@finkel.org>, all rights
+Copyright 2010, Avi Finkel <avi@finkel.org>, all rights
 reserved.  This program is free software; you can redistribute it and/or 
 modify it under the same terms as Perl itself.

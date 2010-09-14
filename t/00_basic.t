@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..72\n"; }
+BEGIN { $| = 1; print "1..80\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Tree::Trie;
 $loaded = 1;
@@ -166,3 +166,43 @@ ok(!defined($tree->lookup('fo')), 69 );
 ok( 'foo' eq $tree->lookup('foo'), 70 );
 ok(!defined($tree->lookup_data('b')), 71 );
 ok( 'oof' eq $tree->lookup_data('foo'), 72 );
+
+# Test to tickle a cute bug (now fixed) found by Stefan Buehler. I quote:
+# $trie->lookup("") fails for the "choose" deepsearch in scalar context
+# if the trie is empty (endless loop)
+$tree = new Tree::Trie;
+$tree->deepsearch('choose');
+ok( '' eq $tree->lookup(''), 73 );
+
+# Testing add_all
+
+# First we test the simple case, two tries with the same end marker.
+$tree = new Tree::Trie;
+$tree->add(qw/fish fulminate porphyry porpoise/);
+my $tree2 = new Tree::Trie;
+$tree2->add(qw/kalamata fish aniline fullness/);
+$tree->add_all($tree2);
+
+@test = $tree->lookup('');
+ok( 7 == scalar @test, 74 );
+
+@test = sort $tree->lookup('ful');
+ok( 2 == scalar @test, 75 );
+ok( 'fullness' eq $test[0], 76 );
+ok( 'fulminate' eq $test[1], 77 );
+
+# Now we'll make sure things work when the end markers differ.
+$tree = new Tree::Trie;
+$tree->add(qw/aab baa aca bca/);
+$tree2 = new Tree::Trie;
+$tree2->add(
+	'aac', ['a', '', 'b'], ['ll', 'a', '']
+);
+$tree->add_all($tree2);
+
+ok( '' ne $tree->{_END}, 78 );
+
+@test = $tree->lookup('');
+ok( 7 == scalar @test, 79 );
+@test = $tree->lookup('aa');
+ok( 2 == scalar @test, 80 );

@@ -8,7 +8,7 @@ require 5;
 use strict;
 use warnings;
 
-our $VERSION = "1.6";
+our $VERSION = "1.7";
 
 # A handful of helpful constants
 use constant DEFAULT_END_MARKER => '';
@@ -171,6 +171,52 @@ sub add_data {
 	}
 	return @retarray if wantarray;
 	return $retnum;
+}
+
+# add_all() takes one or more other tries and adds all of their entries
+# to the trie.  If both tries have data stored for the same key, the data
+# from the trie on which this method was invoked will be overwritten.  I can't
+# think of anything useful to return from this method, so it has no return
+# value.  If you can think of anything that would make sense, please let me
+# know.
+# This idea and most of its implementation come from Aaron Stone.
+# Thanks!
+sub add_all {
+	my $self = shift;
+	for my $trie (@_) {
+		my $ignore_end = (
+			 $self->{_FREEZE_END} ||
+			($self->{_END} eq $trie->{_END})
+		);
+		my @nodepairs = ({
+			from => $trie->{_MAINHASHREF},
+			to   => $self->{_MAINHASHREF},
+		});
+		while (scalar @nodepairs) {
+			my $np = pop @nodepairs;
+			for my $letter (keys %{$np->{from}}) {
+				unless ($ignore_end) {
+					if ($letter eq $self->{_END}) {
+						$self->end_marker($self->_gen_new_marker(
+							bad => [$letter],
+						));
+					}
+				}
+				if ($letter eq $trie->{_END}) {
+					$np->{to}{$self->{_END}} = $np->{from}{$trie->{_END}};
+				}
+				else {
+					unless (exists $np->{to}{$letter}) {
+						$np->{to}{$letter} = {};
+					}
+					push @nodepairs, {
+						from => $np->{from}{$letter},
+						to   => $np->{to}->{$letter},
+					};
+				}
+			}
+		}
+	}
 }
 
 # delete_data() takes a list of words in the trie and deletes the associated
@@ -568,7 +614,7 @@ sub _lookup_internal {
 			# Of course, making it work that way means that we tend to get shorter
 			# words in choose...  is this a bad thing?  I dunno.
 			my($stub) = $wantref ? [] : "";
-			until (exists $ref->{$self->{_END}}) {
+			while (scalar keys %{$ref} && !exists $ref->{$self->{_END}}) {
 				$nextletter = each(%{ $ref });
 				# I need to call this to clear the each() call.  Wish I didn't...
 				keys(%{ $ref });
@@ -716,7 +762,7 @@ sub _gen_new_marker {
 	# re-evaluation.
 	for my $letter (@{$args{bad}}) {
 		my $len = length($letter);
-		if ($len > 1) {
+		if ($len != 1) {
 			$used{$letter}++;
 			$sizes{$len}++;
 		}
@@ -728,8 +774,8 @@ sub _gen_new_marker {
 		for my $key (keys %{$ref}) {
 			# Note we don't even care about length 1 letters.
 			if (
-				($key ne $self->{_END}) &&
-				(length($key) > 1)
+				(length($key) != 1) &&
+				($key ne $self->{_END})
 			) {
 				$used{$key}++;
 				$sizes{length($key)}++;
@@ -759,13 +805,10 @@ sub _gen_new_marker {
 		}
 	}
 	# Now we just generate end markers until we find one that isn't in use.
-	my $newend = each %used;
-	while (exists($used{$newend})) {
-		$newend = '';
-		for my $i (1 .. $newlen) {
-			$newend .= chr(int(rand(128)));
-		}
-	}
+	my $newend;
+	do {
+		$newend = join '', map { chr(int(rand(128))) } (('') x $newlen);
+	} while (exists($used{$newend}));
 	# And return it.
 	return $newend;
 }
@@ -847,6 +890,13 @@ This method attempts to add the words to the trie.  Returns, in list
 context, the words successfully added to the trie.  In scalar context, returns
 the number of words successfully added.  As of this release, the only reason
 a word would fail to be added is if it is already in the trie.
+
+=item $trie->add_all(I<I<trie>>, I<trie1>, ...)
+
+This method adds all of the words from the argument tries to the trie.  By
+performing the traversal of both source and target tries simultaneously,
+this mechanism is much faster first doing a lookup on one trie and then an
+add on the other.  Has no return value.
 
 =item $trie->add_data(I<I<word>> => I<data0>, I<word1> => I<data1>, ...)
 
