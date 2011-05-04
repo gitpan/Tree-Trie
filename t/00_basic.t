@@ -1,178 +1,139 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl test.pl'
+use Test::More tests => 57;
 
-######################### We start with some black magic to print on failure.
-
-# Change 1..1 below to 1..last_test_to_print .
-# (It may become useful if the test is moved to ./t subdirectory.)
-
-BEGIN { $| = 1; print "1..80\n"; }
-END {print "not ok 1\n" unless $loaded;}
-use Tree::Trie;
-$loaded = 1;
-print "ok 1\n";
-
-######################### End of black magic.
-
-sub ok { unless (shift()) { print "not "; } print "ok " . shift() . "\n" }
+BEGIN { use_ok('Tree::Trie'); }
 
 # Basic tests -- adding, lookup and deepsearch params
 $tree = new Tree::Trie;
-ok( ($tree->add(qw/foo foot bar barnstorm food happy fish ripple/) == 8), 2 );
+ok(
+	($tree->add(qw/foo foot bar barnstorm food happy fish ripple/) == 8),
+	'Basic Add'
+);
 
 # Boolean lookups just return truth value
-ok( ($tree->deepsearch("boolean") == 0), 3 );
-ok( (scalar $tree->lookup("f")), 4 );
-ok(!(scalar $tree->lookup("x")), 5 );
+ok( ($tree->deepsearch("boolean") == 0), 'Set boolean deepsearch' );
+ok( (scalar $tree->lookup("f")), 'Found present prefix' );
+ok(!(scalar $tree->lookup("x")), 'Did not find missing prefix' );
 
 # Choose just randomly chooses one word to return
-ok( ($tree->deepsearch("choose") == 1), 6 );
+ok( ($tree->deepsearch("choose") == 1), 'Set choose deepsearch' );
 $test = $tree->lookup("ba");
-ok( ($test eq 'bar' || $test eq 'barnstorm'), 7 );
-ok(!(defined($tree->lookup("q"))), 8 );
+ok( ($test eq 'bar' || $test eq 'barnstorm'), 'Choose by present prefix' );
+ok(!(defined($tree->lookup("q"))), 'Did not find missing prefix' );
 
 # Count counts the number of words
-ok( ($tree->deepsearch("count") == 2), 9 );
-ok( ($tree->lookup("fo") == 3), 10 );
-ok( ($tree->lookup("m") == 0), 11 );
+ok(($tree->deepsearch("count") == 2), 'Set count deepsearch');
+ok(($tree->lookup("fo") == 3), 'Correct count for present prefix');
+ok(($tree->lookup("m") == 0), 'Zero count for missing prefix');
 
 # Test list context lookup  (poorly)
 @test = $tree->lookup("");
-ok( ($#test == 7), 12 );
+ok(($#test == 7), 'List context lookup');
 
 # Testing removal
-ok( ($tree->remove(qw/foo ripple/) == 2 && $tree->lookup("") == 6), 13 );
+ok(
+	($tree->remove(qw/foo ripple/) == 2 && $tree->lookup("") == 6),
+	'Remove operates properly'
+);
 
-# All the tests from before, but with arrayrefs instead of strings
+# Exact only returns if the exact entry exists
 $tree = new Tree::Trie;
-ok( ($tree->add(
-	[qw/00 01 02 03/], [qw/00 01 05 06/], "0001", [qw/aa bb cc ddd/]
-) == 4), 14 );
-$tree->deepsearch("boolean");
-ok( (scalar $tree->lookup(["00"])), 15 );
-ok(!(scalar $tree->lookup(["000"])), 16 );
-ok( (scalar $tree->lookup("000")), 17 );
-$tree->deepsearch("count");
-ok( ($tree->lookup([qw/00 01 02/]) == 1), 18 );
-ok( ($tree->lookup(["00"]) == 2), 19 );
-ok( ($tree->lookup("00") == 1), 20 );
-ok( (scalar $tree->remove("0001", [qw/aa bb cc ddd/]) == 2), 21 );
-ok( ($tree->lookup([]) == 2), 22 );
+$tree->add_data('foo', 'oof');
+$tree->add_data('foot', 'toof');
+$tree->add_data('bar', 'rab');
+$tree->deepsearch('exact');
+ok(!defined($tree->lookup('fo')), 'Non-exact lookup fails');
+ok( 'foo' eq $tree->lookup('foo'), 'Exact lookup succeeds');
+ok(!defined($tree->lookup_data('b')), 'Non-exact data lookup fails');
+ok( 'oof' eq $tree->lookup_data('foo'), 'Exact data lookup succeeds');
 
-# Testing data association
-$tree = new Tree::Trie;
-ok( ($tree->add_data(foo => 1, bar => 2) == 2), 23);
-ok( ($tree->lookup_data('foo') == 1), 24);
-ok( ($tree->add_data(foo => 3, baz => 4) == 1), 25);
-ok( ($tree->lookup_data('foo') == 3), 26);
-ok( ($tree->delete_data(qw/foo baz bip/) == 2), 27);
-ok(!($tree->lookup_data('foo')), 28);
 
 # Testing longest prefix lookup
 $tree = new Tree::Trie;
-ok( ($tree->add(qw#/usr/ /usr/local/ /var/#) == 3), 29);
+ok(($tree->add(qw#/usr/ /usr/local/ /var/#) == 3), 'Adding more data');
 $tree->deepsearch("prefix");
-ok( ($tree->lookup('/usr/foo.txt') eq '/usr/'), 30);
-ok( ($tree->lookup('/usr/lo') eq '/usr/'), 31);
-ok( ($tree->lookup('/usr/local/') eq '/usr/local/'), 32);
-ok( ($tree->lookup('/usr/local/bar.html') eq '/usr/local/'), 33);
+ok(($tree->lookup('/usr/foo.txt') eq '/usr/'), 'Prefix lookup');
+ok(
+	($tree->lookup('/usr/lo') eq '/usr/'),
+	'Potentially ambiguous prefix lookup'
+);
+ok(($tree->lookup('/usr/local/') eq '/usr/local/'), 'Exact prefix lookup');
+ok(
+	($tree->lookup('/usr/local/bar.html') eq '/usr/local/'),
+	'Another prefix lookup'
+);
 
 # Testing suffix lookup
 $tree = new Tree::Trie;
-ok( ($tree->add(
-	qw/foo foot bar barnstorm food happy fish ripple fission/
-) == 9), 34 );
-ok( ($tree->deepsearch("choose") == 1), 35 );
+ok(
+	($tree->add(
+		qw/foo foot bar barnstorm food happy fish ripple fission/
+	) == 9),
+	'Adding data again'
+);
+ok(($tree->deepsearch("choose") == 1), 'Set deepsearch to choose, again');
 $test = $tree->lookup("ba", 2);
-ok( ($test eq 'r' || $test eq 'rn'), 36 );
+ok(($test eq 'r' || $test eq 'rn'), 'Suffix lookup');
 $test = $tree->lookup("fis", -1);
-ok( ($test eq 'h' || $test eq 'sion'), 37 );
-ok( ($tree->lookup("barn", -1) eq 'storm'), 38 );
-ok( ($tree->deepsearch("count") == 2), 39 );
-ok( ($tree->lookup("f", 2) == 2), 40 );
-ok( ($tree->lookup("f", 3) == 5), 41 );
-ok( ($tree->lookup("m", 1) == 0), 42 );
-ok( ($tree->lookup("", 1) == 4), 43 );
-ok( ($tree->lookup("", -1) == 9), 44 );
+ok(($test eq 'h' || $test eq 'sion'), 'Unbounded suffix lookup');
+ok(($tree->lookup("barn", -1) eq 'storm'), 'More unbounded suffix lookup');
+
+ok(($tree->deepsearch("count") == 2), 'Set deepsearch to count for suffix');
+ok(($tree->lookup("f", 2) == 2), 'Multiple non-unique suffixes');
+ok(($tree->lookup("f", 3) == 5), 'Multiple unique suffixes');
+ok(($tree->lookup("m", 1) == 0), 'Missing prefix lookup');
+ok(($tree->lookup("", 1) == 4), 'Count of unqiue prefix letters');
+ok(
+	($tree->lookup("", -1) == 9),
+	'Foolishly using suffix to count words in trie'
+);
 @test = $tree->lookup("ba", 3);
-ok( (scalar @test == 2), 45 );
+ok((scalar @test == 2), 'Suffix lookup in list context');
 
 # Testing mutiple add
 $tree = new Tree::Trie;
-ok( ($tree->add(qw/foo bar baz/) == 3), 46 );
-ok( ($tree->add(qw/foo bar quux/) == 1), 47 );
-
-# Testing data storage better
-$tree = new Tree::Trie;
-ok( ($tree->add_data(
-	foo       => 'oof',
-	bar       => 'rab',
-	barnstorm => 'mrotsnrab',
-) == 3), 48 );
-$tree->deepsearch('choose');
-$test = $tree->lookup_data('ba');
-ok( ($test eq 'rab' || $test eq 'mrotsnrab'), 49 );
-$tree = new Tree::Trie;
-ok( ($tree->add_data(
-	'/usr/' => '/rsu/',
-	'/usr/local/' => '/lacol/rsu/',
-	'/var/' => '/rav/',
-) == 3), 50);
-$tree->deepsearch("prefix");
-ok( ($tree->lookup_data('/usr/foo.txt') eq '/rsu/'), 51 );
-ok( ($tree->lookup_data('/usr/lo') eq '/rsu/'), 52 );
-ok( ($tree->lookup_data('/usr/local/') eq '/lacol/rsu/'), 53 );
-ok( ($tree->lookup_data('/usr/local/bar.html') eq '/lacol/rsu/'), 54 );
-@ret = $tree->lookup_data('');
-ok( (@ret == 6), 55 );
+ok(($tree->add(qw/foo bar baz/) == 3), 'Adding multiple entries');
+ok(($tree->add(qw/foo bar quux/) == 1), 'Adding existing entries');
 
 # Test end marker modification
 $tree = new Tree::Trie({
 	end_marker        => 'xx',
 	freeze_end_marker => 'yup',
 });
-ok( ($tree->{_END} eq 'xx'), 56 );
-ok( $tree->{_FREEZE_END}, 57 );
-ok(!$tree->freeze_end_marker(undef), 58 );
-ok(!$tree->{_FREEZE_END}, 59 );
-ok( ($tree->end_marker('ll') eq 'll'), 60 );
-ok( ($tree->{_END} eq 'll'), 61 );
-ok( ($tree->add(qw/llama llewllen loft/) == 3), 62 );
-ok( ($tree->{_END} eq 'll'), 63 );
-ok( ($tree->add(
-	[qw/aa bb cc ll/],
-	[qw/00 77 88/],
-	'llama',
-	[qw/hh ll hu jo gh/],
-) == 3), 64);
-ok( ($tree->{_END} ne 'll'), 65 );
+ok( ($tree->{_END} eq 'xx'), 'Verify explicit end marker');
+ok( $tree->{_FREEZE_END}, 'Verify marker is frozen');
+ok(!$tree->freeze_end_marker(undef), 'Unfreezing end marker');
+ok(!$tree->{_FREEZE_END}, 'Verify marker is unfrozen');
+ok( ($tree->end_marker('ll') eq 'll'), 'Setting end marker' );
+ok( ($tree->{_END} eq 'll'), 'Verify end marker');
+ok( ($tree->add(qw/llama llewllen loft/) == 3), 'Add some data');
+ok( ($tree->{_END} eq 'll'), 'Verify end marker did not change');
+ok(
+	($tree->add(
+		[qw/aa bb cc ll/],
+		[qw/00 77 88/],
+		'llama',
+		[qw/hh ll hu jo gh/],
+	) == 3),
+	'Add some data which will change end marker'
+);
+ok( ($tree->{_END} ne 'll'), 'Verify end marker changed');
 @test = $tree->lookup('');
-ok( (scalar @test == 6), 66 );
+ok( (scalar @test == 6), 'Verify things still work');
 
 # Testing total deletion
 $tree = new Tree::Trie;
 $tree->add('foo');
-ok( ($tree->remove('foo') == 1), 67 );
+ok( ($tree->remove('foo') == 1), 'Remove only datum');
 @test = $tree->lookup('');
-ok( (scalar @test == 0), 68 );
+ok( (scalar @test == 0), 'Verify trie still works');
 
-# Testing exact lookup
-$tree = new Tree::Trie;
-$tree->add_data('foo', 'oof');
-$tree->add_data('foot', 'toof');
-$tree->add_data('bar', 'rab');
-$tree->deepsearch('exact');
-ok(!defined($tree->lookup('fo')), 69 );
-ok( 'foo' eq $tree->lookup('foo'), 70 );
-ok(!defined($tree->lookup_data('b')), 71 );
-ok( 'oof' eq $tree->lookup_data('foo'), 72 );
 
 # Test to tickle a cute bug (now fixed) found by Stefan Buehler. I quote:
 # $trie->lookup("") fails for the "choose" deepsearch in scalar context
 # if the trie is empty (endless loop)
 $tree = new Tree::Trie;
 $tree->deepsearch('choose');
-ok( '' eq $tree->lookup(''), 73 );
+ok( '' eq $tree->lookup(''), 'Verify infinite loop bug with empty trie');
 
 # Testing add_all
 
@@ -184,12 +145,12 @@ $tree2->add(qw/kalamata fish aniline fullness/);
 $tree->add_all($tree2);
 
 @test = $tree->lookup('');
-ok( 7 == scalar @test, 74 );
+ok((7 == scalar @test), 'Verify new trie has all entries');
 
 @test = sort $tree->lookup('ful');
-ok( 2 == scalar @test, 75 );
-ok( 'fullness' eq $test[0], 76 );
-ok( 'fulminate' eq $test[1], 77 );
+ok((2 == scalar @test), 'Verify lookup succeeds');
+ok(('fulminate' eq $test[1]), 'Verify entry from first trie exists');
+ok(('fullness' eq $test[0]), 'Verify entry from second trie exists');
 
 # Now we'll make sure things work when the end markers differ.
 $tree = new Tree::Trie;
@@ -200,9 +161,9 @@ $tree2->add(
 );
 $tree->add_all($tree2);
 
-ok( '' ne $tree->{_END}, 78 );
+ok( '' ne $tree->{_END}, 'New trie has new end marker');
 
 @test = $tree->lookup('');
-ok( 7 == scalar @test, 79 );
+ok( 7 == scalar @test, 'Lookup still works after add_all');
 @test = $tree->lookup('aa');
-ok( 2 == scalar @test, 80 );
+ok( 2 == scalar @test, 'Prefix lookup still works');

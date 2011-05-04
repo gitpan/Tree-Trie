@@ -1,7 +1,7 @@
 ---
 abstract: A data structure optimized for prefix lookup.
 author:
-  - 'Copyright 2010 Avi Finkel <F<avi@finkel.org>>'
+  - 'Copyright 2011 Avi Finkel <F<avi@finkel.org>>'
 build_requires:
   Pod::Coverage: 0.18
   Test::Pod: 1.26
@@ -17,4 +17,4 @@ no_index:
   directory:
     - inc
     - t
-version: 1.7
+version: 1.8

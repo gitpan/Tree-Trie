@@ -55,3 +55,7 @@ Version 1.7 : 9/14/10 1:22
 
 		Fixing a rare infinite-loop bug in lookup, found by Stefan Buehler.
 		Adding a new add_all method, thanks to Aaron Stone.
+
+Version 1.8 : 5/4/11 1:44
+
+		Improving test methods

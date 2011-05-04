@@ -8,7 +8,7 @@ require 5;
 use strict;
 use warnings;
 
-our $VERSION = "1.7";
+our $VERSION = "1.8";
 
 # A handful of helpful constants
 use constant DEFAULT_END_MARKER => '';
@@ -1136,7 +1136,7 @@ None at this time.
 
 =head1 AUTHOR
 
-Copyright 2007 Avi Finkel <F<avi@finkel.org>>
+Copyright 2011 Avi Finkel <F<avi@finkel.org>>
 
 This package is free software and is provided "as is" without express
 or implied warranty.  It may be used, redistributed and/or modified
