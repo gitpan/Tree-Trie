@@ -1,5 +1,8 @@
 use Test::More tests => 9;
 
+use warnings;
+use strict;
+
 use Tree::Trie;
 
 my $tree = new Tree::Trie;

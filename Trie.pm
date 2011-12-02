@@ -4,11 +4,10 @@
 
 package Tree::Trie;
 
-require 5;
 use strict;
 use warnings;
 
-our $VERSION = "1.8";
+our $VERSION = "1.9";
 
 # A handful of helpful constants
 use constant DEFAULT_END_MARKER => '';

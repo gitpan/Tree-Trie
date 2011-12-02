@@ -1,5 +1,8 @@
 use Test::More tests => 14;
 
+use warnings;
+use strict;
+
 use Tree::Trie;
 
 my $tree = new Tree::Trie;
@@ -20,7 +23,7 @@ ok(
 	'Add more data'
 );
 $tree->deepsearch('choose');
-$test = $tree->lookup_data('ba');
+my $test = $tree->lookup_data('ba');
 ok( ($test eq 'rab' || $test eq 'mrotsnrab'), 'Choose data lookup' );
 
 $tree = new Tree::Trie;
@@ -40,5 +43,5 @@ ok(
 	($tree->lookup_data('/usr/local/bar.html') eq '/lacol/rsu/'),
 	'Yet another directory data lookup'
 );
-@ret = $tree->lookup_data('');
+my @ret = $tree->lookup_data('');
 ok((@ret == 6), 'Prefix lookup multiple results');

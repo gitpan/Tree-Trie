@@ -1,9 +1,12 @@
 use Test::More tests => 57;
 
+use warnings;
+use strict;
+
 BEGIN { use_ok('Tree::Trie'); }
 
 # Basic tests -- adding, lookup and deepsearch params
-$tree = new Tree::Trie;
+my $tree = new Tree::Trie;
 ok(
 	($tree->add(qw/foo foot bar barnstorm food happy fish ripple/) == 8),
 	'Basic Add'
@@ -16,7 +19,7 @@ ok(!(scalar $tree->lookup("x")), 'Did not find missing prefix' );
 
 # Choose just randomly chooses one word to return
 ok( ($tree->deepsearch("choose") == 1), 'Set choose deepsearch' );
-$test = $tree->lookup("ba");
+my $test = $tree->lookup("ba");
 ok( ($test eq 'bar' || $test eq 'barnstorm'), 'Choose by present prefix' );
 ok(!(defined($tree->lookup("q"))), 'Did not find missing prefix' );
 
@@ -26,7 +29,7 @@ ok(($tree->lookup("fo") == 3), 'Correct count for present prefix');
 ok(($tree->lookup("m") == 0), 'Zero count for missing prefix');
 
 # Test list context lookup  (poorly)
-@test = $tree->lookup("");
+my @test = $tree->lookup("");
 ok(($#test == 7), 'List context lookup');
 
 # Testing removal

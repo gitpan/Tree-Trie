@@ -59,3 +59,7 @@ Version 1.7 : 9/14/10 1:22
 Version 1.8 : 5/4/11 1:44
 
 		Improving test methods
+
+Version 1.9 : 12/1/11 16:45
+
+		Fixing errors caused by tests not being strict-clean
